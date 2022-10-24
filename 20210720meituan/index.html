@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head><!-- hexo injector head_begin start -->
+<script src="/config.feacb45411a3403825a6.js"></script>
+<!-- hexo injector head_begin end -->
+<meta charset="utf-8">
+<title>逆向美团APP探索mtgsig加密算法 - 飞浪瞬间的博客</title>
+<base href="/">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<link rel="canonical" href="http://feilang235.com/20210720meituan/">
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+
+<meta name="description" content="逆向美团APP探索mtgsig加密算法">
+<meta property="og:type" content="website">
+<meta property="og:title" content="逆向美团APP探索mtgsig加密算法">
+<meta property="og:url" content="http://feilang235.com/20210720meituan/index.html">
+<meta property="og:site_name" content="飞浪瞬间的博客">
+<meta property="og:description" content="逆向美团APP探索mtgsig加密算法">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://www.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e?s=160">
+<meta property="article:published_time" content="2021-07-20T21:07:59.000Z">
+<meta property="article:modified_time" content="2021-07-20T13:18:46.038Z">
+<meta property="article:author" content="feilang235">
+<meta property="article:tag" content="逆向爬虫">
+<meta property="article:tag" content="美团">
+<meta property="article:tag" content="mtgsig">
+<meta property="article:tag" content="美团团购">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://www.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e?s=160">
+<script type="application/ld+json">[{"@context":"http://schema.org","@type":"WebSite","publisher":{"@type":"Person","name":"feilang235","description":"飞翔的浪花，转瞬即逝，没有永恒，只有无数的瞬间。必须要悄悄努力，然后惊艳所有人。","image":"https://www.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e?s=160"},"url":"http://feilang235.com","image":"https://www.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e?s=160","description":"逆向爬虫 抖音爬虫 快手爬虫 小红书爬虫","author":{"@type":"Person","name":"feilang235","description":"飞翔的浪花，转瞬即逝，没有永恒，只有无数的瞬间。必须要悄悄努力，然后惊艳所有人。","image":"https://www.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e?s=160"},"inLanguage":{"@type":"Language","alternateName":"zh-Hans"}},{"@context":"http://schema.org","@type":"Article","articleSection":"","url":"http://feilang235.com/20210720meituan.html","headline":"逆向美团APP探索mtgsig加密算法","image":"https://www.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e?s=160","datePublished":"2021-07-20T21:07:59.000Z","dateModified":"2021-07-20T13:18:46.038Z","keywords":"逆向爬虫,美团,mtgsig,美团团购","description":"简单逆向并且分析了美团app 的加密字段。使用hook 的方式进行调用。\n下面是详细的分析过程。\n分析过程\n抓包店铺详情\nhttp://scapi.waimai.meituan.com/mtapi/v9/poi/food?wm_appversion=11.10.404&amp;utm_medium=android&amp;wm_seq=231&amp;uuid=000000000000062B1FBC7B7904BC3BAE6B73BC9937E2BA162484885268688693&amp;wm_ctype=mtandroid&amp;platform=4&amp;wm_latitude=30546106&amp;wm_actual_longitude=104062093&amp;wm_visitid=d1287073-34b1-4188-9b04-5f0f4889a645&amp;wm_dversion=28_9&amp;wm_mac=02%3A00%3A00%3A00%3A00%3A00&amp;push_token=dpshb7d0b3b5094e580f5b8cb4da2d86cf9catpu&amp;utm_content=990012007480921&amp;app=0&amp;wm_longitude=104062093&amp;utm_campaign=AgroupBgroupC0E0Ghomepage_category38_21112__a1__c-1024&amp;wm_actual_latitude=30546106&amp;ci=30&amp;f=android&amp;waimai_sign=T22ltAgF0RUqghUGkugZVhGQZ7ap8vyHPUbEy3OKfOU682swnAoEPtjCVGNhTYB1RwA1OM72mWRn\nkE48m4W%2FBzMgri08scvR3oBVn1XV2mt6K%2BqVR7nfPoFUTsDmglDJOemGKF%2FleKUskYllXsrjxKNG\nMu%2FvFavU2JK47GkuhvE%3D\n&amp;wm_did=990012007480921&amp;version=11.10.404&amp;req_time=1626684620740&amp;utm_term=1100100404&amp;wm_dtype=Pixel 3&amp;wm_uuid=000000000000062B1FBC7B7904BC3BAE6B73BC9937E2BA162484885268688693&amp;partner=4&amp;utm_source=wandoujia&amp;version_name=11.10.404&amp;msid=9900120074809211626683624711&amp;userid=-1&amp;__reqTraceID=956e1a93-7ea6-4254-925a-a7caa6edd370","publisher":{"@type":"Organization","name":"飞浪瞬间的博客","logo":{"@type":"ImageObject","url":"https://www.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e?s=160"}},"author":{"@type":"Person","name":"feilang235","description":"飞翔的浪花，转瞬即逝，没有永恒，只有无数的瞬间。必须要悄悄努力，然后惊艳所有人。","image":"https://www.gravatar.com/avatar/d41d8cd98f00b204e9800998ecf8427e?s=160"},"inLanguage":{"@type":"Language","alternateName":"zh-Hans"},"mainEntityOfPage":{"@type":"WebPage","@id":"http://feilang235.com/20210720meituan.html"}}]</script><link rel="alternate" type="application/atom+xml" title="飞浪瞬间的博客" href="/atom.xml">
+
+<!-- hexo injector head_end start --><style is="theme">html{--inside-accent-color:#2a2b33;--inside-foreground-color:#363636;--inside-border-color:#e0e0e0;--inside-background:#f3f6f7;--inside-sidebar-background:#2a2b33;--inside-card-background:#fff;--inside-font-base:Microsoft YaHei;--inside-font-logo:-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;--inside-font-menu:Baloo Bhaijaan,Microsoft YaHei;--inside-font-heading:-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;--inside-font-label:Montserrat,Microsoft YaHei;--inside-font-code:Inconsolata,monospace;--inside-font-print:-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;--inside-content-width:1000px;--inside-highlight-00:#1d1f21;--inside-highlight-01:#282a2e;--inside-highlight-02:#373b41;--inside-highlight-03:#969896;--inside-highlight-04:#b4b7b4;--inside-highlight-05:#c5c8c6;--inside-highlight-06:#e0e0e0;--inside-highlight-07:#ffffff;--inside-highlight-08:#cc6666;--inside-highlight-09:#de935f;--inside-highlight-0a:#f0c674;--inside-highlight-0b:#b5bd68;--inside-highlight-0c:#8abeb7;--inside-highlight-0d:#81a2be;--inside-highlight-0e:#b294bb;--inside-highlight-0f:#a3685a;--inside-card-color:#fff;--inside-accent-color-005:rgba(42,43,51,.05);--inside-accent-color-01:rgba(42,43,51,.1);--inside-accent-color-02:rgba(42,43,51,.2);--inside-accent-color-04:rgba(42,43,51,.4);--inside-accent-color-08:rgba(42,43,51,.8)}</style><script src="/theme.9ecc9ab1.js"></script><link href="//cdn.jsdelivr.net/gh/fiteen/fiteen.github.io@v0.1.0/font.css" rel="stylesheet"></link>
+<script src="/palette.ead17218.js"></script>
+<link href="/styles.91e7dfca63c7c151daa6.css" rel="stylesheet"><!-- hexo injector head_end end --><meta name="generator" content="Hexo 5.4.0"></head>
+<body lang="zh-Hans"><!-- hexo injector body_begin start --><is-a></is-a><!-- hexo injector body_begin end --><!-- hexo injector body_end start --><script src="/runtime.1ed960b0635ea0669f87.js"></script><script src="/polyfills.b7bf56fc45f931a8b83e.js"></script><script src="/main.543c891b4aad158701f3.js"></script><!-- hexo injector body_end end --></body>
+</html>

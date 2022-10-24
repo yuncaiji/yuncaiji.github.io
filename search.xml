@@ -1,0 +1,667 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>逆向微信小红书小程序并获得x-sign算法</title>
+    <url>/20210708-xiaohongshu.html</url>
+    <content><![CDATA[<p>本文介绍了逆向微信小红书小程序 app 并获取小红书的x-sign 加密算法详细过程。</p>
+<p>按照文章的流程一步一步往下走就可以获得详细的加密算法了。</p>
+<p>本文也作为逆向技术分享的第一篇文章，欢迎大家拍砖。</p>
+<p><img src="https://cdn.parklu.com/wp-content/uploads/2020/08/IMG_8056.jpg" alt="小红书直播怎么玩？品牌该如何选择主播？ | PARKLU" loading="lazy" class="φbp"></p>
+<span id="more"></span>
+<h1 id="硬件准备">硬件准备<a title="#硬件准备" href="#硬件准备"></a></h1>
+<p>一台 root 好的手机</p>
+<p>Mac or win 电脑</p>
+<h1 id="提取小程序包"><strong>提</strong>取小程序包<a title="#提取小程序包" href="#提取小程序包"></a></h1>
+<h2 id="清除历史缓存的小程序包">清除历史缓存的小程序包<a title="#清除历史缓存的小程序包" href="#清除历史缓存的小程序包"></a></h2>
+<p>微信的小程序是在第一次打开的时候就会进行下载一个 wxapkg 的包并且缓存到手机里面。以后再使用的时候就不用下载了，只需要检测有没有更新就行了。我们这边先删除历史中存在的所有缓存文件。</p>
+<p>使用 adb 链接手机进入目录：/data/data/com.tencent.mm/MicroMsg/{user}/appbrand/pkg</p>
+<p>{user} 是自己的 UserID。</p>
+<p>在这个目录下删除所有的后缀为 wxapkg 的包。</p>
+<h1 id="微信中打开小程序">微信中打开小程序<a title="#微信中打开小程序" href="#微信中打开小程序"></a></h1>
+<p>清理所有缓存小程序包之后，重新打开微信，然后搜索小红书APP找到小程序。点击后打开小红书小程序。你会发现这个时候第一次特别慢，因为微信需要重新去下载小红书小程序的包。相当于就是下载app 并安装，但是小程序没有app那么大，而且安装更快。</p>
+<p>等重新打开小程序后，随便点击几下，确认运行正常。</p>
+<p>这个时候在 /data/data/com.tencent.mm/MicroMsg/{user}/appbrand/pkg 查看是否有一个新文件。</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714144813401.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>如上截图，多了一个 _-1008161779_39.wxapkg 这个包就是小红书的微信小程序内容了。</p>
+<h2 id="提取微信小程序包到电脑">提取微信小程序包到电脑<a title="#提取微信小程序包到电脑" href="#提取微信小程序包到电脑"></a></h2>
+<p>使用 adb pull进行复制。</p>
+<p>这里有个坑。直接从 /data/data/com.tencent.mm/MicroMsg/{user}/appbrand/pkg/_-1008161779_39.wxapkg 这里复制可能会没有权限。</p>
+<p>可以先把 _-1008161779_39.wxapkg 复制到 /data/local/tmp 路径下。并且</p>
+<p>chmod 777  _-1008161779_39.wxapkg 给予最高权限。</p>
+<p>然后在 adb pull /data/local/tmp/_-1008161779_39.wxapkg ~/projects/</p>
+<p>进行复制。这样就可以将小红书的包下载到 mac 的~/projects/ 文件夹下面了。</p>
+<h1 id="反编译小程序包">反编译小程序包<a title="#反编译小程序包" href="#反编译小程序包"></a></h1>
+<p>上面虽然下载到了小程序的包，不过后缀是 wxapkg 这个还是微信生态圈的内容。需要对这个包进行反编译获得 js 文件。并且可以对其进行调试。</p>
+<p>这里推荐一个神器。上 github 地址。</p>
+<p><a href="https://github.com/xuedingmiaojun/wxappUnpacker">https://github.com/xuedingmiaojun/wxappUnpacker</a></p>
+<p>我们也会用到 wxappUnpacker 进行反编译。github 上面已经有详细的使用教程了。而且还提供了一个</p>
+<h3 id="wxappunpacker-配置">wxappUnpacker 配置<a title="#wxappunpacker-配置" href="#wxappunpacker-配置"></a></h3>
+<p>wxappUnpacker 配置依赖了 nodejs 和 npm 不懂的请自行 google。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">git clone https://github.com/xuedingmiaojun/wxappUnpacker.git</span><br><span class="line"></span><br><span class="line">cd wxappUnpacker</span><br><span class="line">npm install # 安装依赖</span><br><span class="line"></span><br><span class="line"># 安装其他需要的包</span><br><span class="line">npm install esprima</span><br><span class="line">npm install css-tree</span><br><span class="line">npm install cssbeautify</span><br><span class="line">npm install vm2</span><br><span class="line">npm install uglify-es</span><br><span class="line">npm install js-beautify</span><br></pre></td></tr></table></figure>
+<h3 id="wxappunpacker-工具说明">wxappUnpacker 工具说明<a title="#wxappunpacker-工具说明" href="#wxappunpacker-工具说明"></a></h3>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">node wuConfig.js &lt;files...&gt; </span><br><span class="line"># 将 app-config.json 中的内容拆分到各个文件对应的 .json 和 app.json , 并通过搜索 app-config.json 所在文件夹下的所有文件尝试将 iconData 还原为 iconPath 。</span><br><span class="line"></span><br><span class="line">node wuJs.js &lt;files...&gt; </span><br><span class="line"># 将 app-service.js (或小游戏中的 game.js ) 拆分成一系列原先独立的 javascript 文件，并使用 Uglify-ES 美化，从而尽可能还原编译前的情况。</span><br><span class="line"></span><br><span class="line">node wuWxml.js [-m] &lt;files...&gt; </span><br><span class="line"># 将编译/混合到 page-frame.html ( 或 app-wxss.js ) 中的 wxml 和 wxs 文件还原为独立的、未编译的文件。如果加上-m指令，就会阻止block块自动省略，可能帮助解决一些相关过程的 bug 。**</span><br><span class="line"></span><br><span class="line">node wuWxss.js &lt;dirs...&gt; </span><br><span class="line"># 通过获取文件夹下的 page-frame.html ( 或 app-wxss.js ) 和其他 html 文件的内容，还原出编译前 wxss 文件的内容。</span><br><span class="line">node wuWxapkg.js [-o] [-d] [-s=] &lt;files...&gt; </span><br><span class="line"># 将 wxapkg 文件解包，并将包中上述命令中所提的被编译/混合的文件自动地恢复原状。如果加上-o指令，表示仅解包，不做后续操作。如果加上-d指令，就会保留编译/混合后所生成的新文件，否则会自动删去这些文件。同时，前面命令中的指令也可直接加在这一命令上。而如果需要解压分包，请先解压主包，然后执行node wuWxapkg.js [-d] -s=&lt;subPackages...&gt;，其中Main Dir为主包解压地址。除-d与-s外，这些指令两两共存的后果是未定义的（当然，是不会有危险的）</span><br></pre></td></tr></table></figure>
+<h3 id="wxappunpacker-反编译小红书小程序">wxappUnpacker 反编译小红书小程序<a title="#wxappunpacker-反编译小红书小程序" href="#wxappunpacker-反编译小红书小程序"></a></h3>
+<p>终于到了最激动人心的步骤了。</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">node wuWxapkg.js _-1008161779_39.wxapkg</span><br></pre></td></tr></table></figure>
+<p><img src="http://blog.feilang235.com/(null)-20210714144833732.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p><img src="http://blog.feilang235.com/(null)-20210714144846850.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>出现上面的内容就表示反编译成功了。现在已经获得了小红书小程序客户端的全部内容了。</p>
+<p>使用 vscode 打开看看。</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714144857814.(null)" alt="img" loading="lazy" class="φbp"></p>
+<h1 id="逆向小红书小程序x-sign-算法">逆向小红书小程序x-sign 算法<a title="#逆向小红书小程序x-sign-算法" href="#逆向小红书小程序x-sign-算法"></a></h1>
+<p>通过抓包可以知道小红书小程序使用的是 x-sign 字段进行验证。</p>
+<p>既然我们这里已经获得了完整的客户端代码了。要找到 x-sign 签名算法，那还不件非常简单的事情。直接搜索 x-sign 差不多就定位了。</p>
+<p>这里将签名算法接个图。</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714144912278.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>简单的说就是</p>
+<p>md5(DEFAULT_SIGN_VERSION + url + queryString + SECRET_KEY)</p>
+<p>详细代码就不编写了。如果需要可以私聊v：feilang235 .</p>
+<p>以上就是最详细的逆向小红书小程序并且获得 x-sign 算法的全流程了。</p>
+<h1 id="参考内容">参考内容<a title="#参考内容" href="#参考内容"></a></h1>
+<p><a href="https://www.ddosi.com/weixin-pkg/">https://www.ddosi.com/weixin-pkg/</a></p>
+<p><a href="https://github.com/xuedingmiaojun/wxappUnpacker">https://github.com/xuedingmiaojun/wxappUnpacker</a></p>
+<h1 id="免责声明">免责声明<a title="#免责声明" href="#免责声明"></a></h1>
+<p>以下内容仅用于逆向学习和技术验证，如果侵犯了利益，请联系我删除v:feilang235。</p>
+]]></content>
+      <categories>
+        <category>技术分享</category>
+        <category>逆向技术</category>
+      </categories>
+      <tags>
+        <tag>小红书</tag>
+        <tag>微信小程序</tag>
+        <tag>x-sign</tag>
+        <tag>sign</tag>
+        <tag>逆向</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Github Actions自动化部署实践Hexo博客</title>
+    <url>/20210708hexoblog.html</url>
+    <content><![CDATA[<h3 id="什么是github-actions？">什么是Github Actions？<a title="#什么是github-actions？" href="#什么是github-actions？"></a></h3>
+<p><img src="http://blog.feilang235.com/16258011457872r7z91to.png" alt="paste image" loading="lazy" class="φbp"></p>
+<span id="more"></span>
+<p>直接点击传送门，看看阮一峰大佬的<a href="http://www.ruanyifeng.com/blog/2019/09/getting-started-with-github-actions.html" target="_blank">Github Actions</a> 入门教程;</p>
+<h4 id="创建-github-仓库。">创建 github 仓库。<a title="#创建-github-仓库。" href="#创建-github-仓库。"></a></h4>
+<p>在 github 下创建两个仓库。一个是 hexo-blog 设为私密。一个是 <a href="https://github.com/feilang235/feilang235.github.io" target="_blank">feilang235.github.io</a> 公开。<br>
+克隆仓库 hexo-blog 。</p>
+<p>初始化博客</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">https://github.com/feilang235/hexo-blog.git</span><br><span class="line">cd hexo-blog</span><br><span class="line">mkdir test</span><br><span class="line">cd test </span><br><span class="line">hexo init</span><br><span class="line">cd ../</span><br><span class="line">mv test/* ./</span><br><span class="line">rm -rf test/</span><br></pre></td></tr></table></figure>
+<p>为什么要先创建一个 test 文件夹呢？<br>
+因为 hexo init 必须要在一个空文件夹初始化。</p>
+<p>测试</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hexo g # 生成代码 </span><br><span class="line">Hexo s # 启动本地服务</span><br></pre></td></tr></table></figure>
+<p><img src="http://blog.feilang235.com/1625801246294qohmttr5.png" alt="paste image" loading="lazy"><br>
+出现这样后，就启动成功了，打开 <a href="http://localhost:4000">http://localhost:4000</a> 即可访问本地仓库。使用的是hexo 默认的主题。</p>
+<h3 id="添加-github-action-部署">添加 github action 部署<a title="#添加-github-action-部署" href="#添加-github-action-部署"></a></h3>
+<p>生成公钥和私钥并上传</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">ssh-keygen -t rsa -C &#x27;your email&#x27;</span><br></pre></td></tr></table></figure>
+<p>然后一路回车到底。<br>
+会生成两个文件。一个文件是xxx.pub是公钥，xxx是私钥与之对应。<br>
+绑定公钥与私钥，公钥—–&gt;<a href="http://xxx.github.io">xxx.github.io</a>，私钥—–&gt;hexo-blog；<br>
+下图应该详细阐述了怎么绑定公钥与私钥~<br>
+<img src="http://blog.feilang235.com/162580127699413v90bj5.png" alt="paste image" loading="lazy"><br>
+注意这里需要输入一个 名称。在下面的脚本中会用到。需要对应。建议输入：HEXO_DEPLOY_KEY</p>
+<p>增加 github 部署脚本<br>
+在 hexo-blog 路径下创建文件： ./github/workflows/blog.yml<br>
+编辑 blog.yml 文件输入内容如下：</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">name:</span> <span class="string">Deploy</span> <span class="string">Blog</span></span><br><span class="line"></span><br><span class="line"><span class="attr">on:</span> [<span class="string">push</span>] <span class="comment"># 当有新push时运行</span></span><br><span class="line"></span><br><span class="line"><span class="attr">jobs:</span></span><br><span class="line">  <span class="attr">build-and-deploy:</span> <span class="comment"># 创建job</span></span><br><span class="line"></span><br><span class="line">    <span class="attr">runs-on:</span> <span class="string">ubuntu-latest</span> <span class="comment"># 在最新版的Ubuntu系统下运行</span></span><br><span class="line"></span><br><span class="line">    <span class="attr">steps:</span></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Checkout</span> <span class="comment"># 将仓库内master分支的内容下载到工作目录</span></span><br><span class="line">      <span class="attr">uses:</span> <span class="string">actions/checkout@v1</span> <span class="comment"># 脚本来自 https://github.com/actions/checkout</span></span><br><span class="line"></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Setup</span> <span class="string">Node.js</span></span><br><span class="line">      <span class="attr">uses:</span> <span class="string">actions/setup-node@v1</span></span><br><span class="line">      <span class="attr">with:</span></span><br><span class="line">        <span class="attr">node-version:</span> <span class="string">&#x27;12&#x27;</span></span><br><span class="line"></span><br><span class="line">    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Setup</span> <span class="string">Hexo</span> <span class="string">Env</span></span><br><span class="line">      <span class="attr">env:</span></span><br><span class="line">        <span class="attr">ACTION_DEPLOY_KEY:</span> <span class="string">$&#123;&#123;</span> <span class="string">secrets.HEXO_DEPLOY_KEY</span> <span class="string">&#125;&#125;</span> <span class="comment"># 拿到仓库配置的私钥：HEXO_DEPLOY_KEY</span></span><br><span class="line">      <span class="attr">run:</span> <span class="string">|</span></span><br><span class="line"><span class="string">        # set up private key for push code</span></span><br><span class="line"><span class="string">        mkdir -p ~/.ssh/</span></span><br><span class="line"><span class="string">        echo &quot;$ACTION_DEPLOY_KEY&quot; &gt; ~/.ssh/id_rsa # 配置秘钥</span></span><br><span class="line"><span class="string">        chmod 700 ~/.ssh</span></span><br><span class="line"><span class="string">        chmod 600 ~/.ssh/id_rsa</span></span><br><span class="line"><span class="string">        ssh-keyscan github.com &gt;&gt; ~/.ssh/known_hosts</span></span><br><span class="line"><span class="string">        # set git config</span></span><br><span class="line"><span class="string">        git config --global user.name &quot;feilang235&quot;</span></span><br><span class="line"><span class="string">        git config --global user.email &quot;feilang235@gmail.com&quot;</span></span><br><span class="line"><span class="string">        # install dependencies</span></span><br><span class="line"><span class="string">        npm i -g hexo-cli # 安装hexo</span></span><br><span class="line"><span class="string">        npm i</span></span><br><span class="line"><span class="string">        npm install hexo-deployer-git --save  # 安装git配置</span></span><br><span class="line"><span class="string">        npm install hexo-theme-inside --save  # 安装inside主题</span></span><br><span class="line"><span class="string"></span>    <span class="bullet">-</span> <span class="attr">name:</span> <span class="string">Hexo</span> <span class="string">Deploy</span></span><br><span class="line">      <span class="attr">run:</span> <span class="string">|</span></span><br><span class="line"><span class="string">        # deploy and automatic push code</span></span><br><span class="line"><span class="string">        hexo generate &amp;&amp; hexo deploy # 执行部署程序</span></span><br></pre></td></tr></table></figure>
+<p><font color='red'> 特别注意 </font></p>
+<p>需要将 _config.yml 配置文件中的部署设置为以下信息</p>
+<figure class="highlight yaml"><table><tr><td class="code"><pre><span class="line"><span class="attr">deploy:</span></span><br><span class="line">  <span class="attr">type:</span> <span class="string">git</span></span><br><span class="line">  <span class="attr">repo:</span> <span class="string">git@github.com:feilang235/feilang235.github.io.git</span> <span class="comment"># 这里不能是https的方式</span></span><br><span class="line">  <span class="attr">branch:</span> <span class="string">master</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">feilang235</span></span><br><span class="line">  <span class="attr">email:</span> <span class="string">feilang235@gmail.com</span></span><br></pre></td></tr></table></figure>
+<p>到此为止简单的部署就差不多了</p>
+<h3 id="hexo-常用命令">Hexo 常用命令<a title="#hexo-常用命令" href="#hexo-常用命令"></a></h3>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">hexo n &#x27;hexo-blog&#x27; # 创建文章，链接为 hexo-blog</span><br><span class="line"></span><br><span class="line">hexo g # 生成代码</span><br><span class="line"></span><br><span class="line">hexo s # 启动本地服务</span><br><span class="line"></span><br><span class="line">hexo d # 部署服务</span><br><span class="line"></span><br><span class="line">hexo clean # 清理生成的文件</span><br></pre></td></tr></table></figure>
+<h3 id="设置域名">设置域名<a title="#设置域名" href="#设置域名"></a></h3>
+<p>在 hexo-blog/source/ 下创建 CNAME 文件。<br>
+在 CNAME 文件中输入你想设置的域名例如：feilang235</p>
+<p>在 域名服务商那里配置域名解析。</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">记录类型 主机记录 记录值</span><br><span class="line">CNAME www feilang235.github.io</span><br><span class="line">A @ 192.30.252.153</span><br><span class="line">A @ 192.30.252.154</span><br></pre></td></tr></table></figure>
+<p>重新部署后就可以通过域名访问了。</p>
+<h3 id="配置主题">配置主题<a title="#配置主题" href="#配置主题"></a></h3>
+<p>inside github 地址：<a href="https://github.com/ikeq/hexo-theme-inside">https://github.com/ikeq/hexo-theme-inside</a><br>
+在 部署的 blog.yml 脚本中加上<br>
+<img src="http://blog.feilang235.com/1625801423828e7d9uu8u.png" alt="paste image" loading="lazy"><br>
+修改 _config.yml 的 theme 为 inside 。默认的为 landscape。<br>
+主题内容修改：</p>
+<ol>
+<li>Locate to project/ and run<br>
+npm install hexo-theme-inside</li>
+<li>Config project/_config.yml<br>
+theme: inside</li>
+<li>Copy _config.yml to project/_config.inside.yml, see here for full documentation.</li>
+</ol>
+<p>然后修改 _config.inside.yml 内容就行。<br>
+详细配置参考：<a href="https://blog.oniuo.com/theme-inside">https://blog.oniuo.com/theme-inside</a></p>
+<h3 id="插件配置">插件配置<a title="#插件配置" href="#插件配置"></a></h3>
+<p>插件集合地址：<a href="https://hexo.io/plugins/">https://hexo.io/plugins/</a></p>
+<h3 id="参考文章">参考文章<a title="#参考文章" href="#参考文章"></a></h3>
+<p><a href="https://www.bigdreamer.cc/article/github-ci/">https://www.bigdreamer.cc/article/github-ci/</a></p>
+<p><a href="http://www.ruanyifeng.com/blog/2019/09/getting-started-with-github-actions.html">http://www.ruanyifeng.com/blog/2019/09/getting-started-with-github-actions.html</a></p>
+<p>SEO参考链接：</p>
+<p><a href="https://blog.csdn.net/lzy98/article/details/81140704">https://blog.csdn.net/lzy98/article/details/81140704</a></p>
+]]></content>
+      <categories>
+        <category>技术分享</category>
+      </categories>
+      <tags>
+        <tag>Github Action</tag>
+        <tag>hexo</tag>
+        <tag>inside主题</tag>
+        <tag>博客</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>实战逆向贝壳Authorization加密算法</title>
+    <url>/20210714beike.html</url>
+    <content><![CDATA[<h1 id="目标">目标<a title="#目标" href="#目标"></a></h1>
+<p>本文主要介绍了贝壳app的加密算法。</p>
+<p>贝壳版本： 2.59.0</p>
+<p>加密参数：Authorization</p>
+<p>加密算法：sha1</p>
+<p>研究成果：成果逆向获得贝壳完整的加密算法，并且用python复现了该算法。</p>
+<span id="more"></span>
+<h1 id="抓包">抓包<a title="#抓包" href="#抓包"></a></h1>
+<p>从豌豆荚下载最新版的贝壳app。目前最新版的是 2.59.0。因此就直接分析最新版了。</p>
+<p>首先抓包，为了避免信息太多就抓一个房源信息的吧。</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714154707813.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>通过分析，我们知道了 这个 Authorization 就是加密的字段了。分析过程就不表了，这个很简单。多抓几个包，或者修改下参数对比下就行了。</p>
+<p>既然知道了加密字段，接下来，我们就用jadx 打开 app 然后分析下代码。</p>
+<h1 id="查看源码">查看源码<a title="#查看源码" href="#查看源码"></a></h1>
+<p>用 jadx 打开 apk 代码。首先查看包名。</p>
+<p>在 AndroidManifest.xml 中可以看到包名是：com.lianjia.beike</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714154737779.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>直接搜索关键词：Authorization 一共出来 232个。</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714154826535.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>接下来需要分析哪个是我们需要找的加密代码段。这个部分一般是耗时比较长的。当然如果你做的足够多了也有一些技巧。我大概花了十分钟定位到了这个函数。</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714154834954.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>点击去后查看，就是 包名是：com.bk.base.netimpl.a</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714154846960.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>为了确认我的想法，用 frida hook 一下c 这个函数，加一个日志。</p>
+<p>Hook 代码。</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line"><span class="keyword">var</span> netimpl = Java.use(<span class="string">&quot;com.bk.base.netimpl.a&quot;</span>);</span><br><span class="line">netimpl.c.overload(<span class="string">&#x27;java.lang.String&#x27;</span>, <span class="string">&#x27;java.util.Map&#x27;</span>).implementation = <span class="function"><span class="keyword">function</span> (<span class="params">a1, a2</span>) </span>&#123;</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">&quot;netimpl:&quot;</span>+a1.toString());</span><br><span class="line">    <span class="keyword">var</span> res = <span class="built_in">this</span>.c(a1, a2);</span><br><span class="line">    <span class="built_in">console</span>.log(<span class="string">&quot;Auth:&quot;</span> + res.toString());</span><br><span class="line">    <span class="keyword">return</span> res;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+<p>果然每次请求涉及到Authorization的都会调用这个方法，稳了。既然找到了加密方法，接下来就是对加密的参数进行分析了。</p>
+<h1 id="frida-调试代码">Frida 调试代码<a title="#frida-调试代码" href="#frida-调试代码"></a></h1>
+<p>我在分析的过程中喜欢用 frida 进行调试，而且随时可以加 hook 代码。动态的谁不喜欢呢。</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714154930878.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>Authorization 就是调用 c 这个参数生成的。如果不想分析了，只是简单调用，那就简单了。用 frida 写一个 rpc 方法。提供一个 flask api 就可以生产加密后的结果了。</p>
+<p>当然我们今天的目的还是分析算法。</p>
+<h1 id="算法分析">算法分析<a title="#算法分析" href="#算法分析"></a></h1>
+<p>通过上面的截图可以看到 生成Authorization 的是 c 方法。实际是在 a 方法里面调用的。调用 c 有两个参数 一个是 url 另一个是 map，但是传进来的是空。所以只有一个字段。</p>
+<p>c 函数分析。</p>
+<ol>
+<li>获取所有请求的参数，然后变成一个map</li>
+<li>如果 参数2 有值，则把 参数2更新到 map 里面</li>
+<li>对 map 取entrySet 并且按照key 排序，结果是ArrayList</li>
+<li>从 JniClient 里面获取 httpAppSecret 字段</li>
+<li>继续从 JniClient 里面获取 httpAppId 字段</li>
+<li>用 httpAppSecret 和 arrayList 进行组合得到一个字符串 sb</li>
+<li>将 sb 送到  DeviceUtil.SHA1ToString 这个方法加密得到 SHA1ToString</li>
+<li>将 httpAppId和 SHA1ToString 组合并且进行  Base64.encodeToString 转换得到最后的结果。</li>
+</ol>
+<p>那么上面流程最重要的就是 4 and 5 获取了 httpAppSecret and httpAppId 加密字段。还有 DeviceUtil.SHA1ToString 这个加密算法了。</p>
+<p>首先分析 httpAppSecret 和 httpAppId 的获取。使用 frida 写一个 hook 函数，主动调用一下。很容易就获取到了。</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">function</span> <span class="title">call_jni</span>(<span class="params">aa</span>) </span>&#123;</span><br><span class="line">    Java.perform(<span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">        <span class="keyword">var</span> aa = Java.use(<span class="string">&quot;com.bk.base.config.a&quot;</span>);</span><br><span class="line">        <span class="keyword">var</span> context = aa.getContext()</span><br><span class="line"></span><br><span class="line">        <span class="keyword">var</span> JniClient = Java.use(<span class="string">&quot;com.homelinkndk.lib.JniClient&quot;</span>);</span><br><span class="line">        <span class="keyword">var</span> obj_enc = JniClient.$new();</span><br><span class="line">        <span class="keyword">var</span> str_ret = obj_enc.GetAppSecret(context)</span><br><span class="line">        <span class="built_in">console</span>.log(<span class="string">&quot;GetAppSecret result: &quot;</span> + str_ret);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">var</span> str_id = obj_enc.GetAppId(context)</span><br><span class="line">        <span class="built_in">console</span>.log(<span class="string">&quot;GetAppId result: &quot;</span> + str_id);</span><br><span class="line">        <span class="keyword">return</span> <span class="string">&quot;sfs&quot;</span>;</span><br><span class="line">    &#125;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>接下来分析 SHA1ToString 方法。方法截图如下：对应看过来就是一个 SHA-1 的加密。简单。</p>
+<p><img src="http://blog.feilang235.com/(null)-20210714155034366.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>最后用 python 实现下 Authorization 的加密算法逻辑。</p>
+<h1 id="python-实现">Python 实现<a title="#python-实现" href="#python-实现"></a></h1>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="keyword">import</span> base64</span><br><span class="line"><span class="keyword">import</span> hashlib</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> requests</span><br><span class="line"><span class="keyword">import</span> json</span><br><span class="line"><span class="keyword">from</span> logzero <span class="keyword">import</span> logger</span><br><span class="line"></span><br><span class="line"><span class="comment"># 这里不在公网上公开了</span></span><br><span class="line">http_app_secret = <span class="string">&#x27;XXXXXXXXXXXX&#x27;</span></span><br><span class="line">http_app_id = <span class="string">&#x27;XXXXXXXX&#x27;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">str_encrypt</span>(<span class="params"><span class="built_in">str</span></span>):</span></span><br><span class="line">    <span class="string">&quot;&quot;&quot;</span></span><br><span class="line"><span class="string">    使用sha1加密算法，返回str加密后的字符串</span></span><br><span class="line"><span class="string">    &quot;&quot;&quot;</span></span><br><span class="line">    sha = hashlib.sha1(<span class="built_in">str</span>)</span><br><span class="line">    encrypts = sha.hexdigest()</span><br><span class="line">    <span class="keyword">return</span> encrypts</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">params = &#123;</span><br><span class="line">    <span class="string">&#x27;houseCode&#x27;</span>: <span class="string">&#x27;101111010102&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;cityId&#x27;</span>: <span class="string">&#x27;110000&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;fb_expo_id&#x27;</span>: <span class="string">&#x27;462726273153150977&#x27;</span>,</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">def</span> <span class="title">get_authorization</span>(<span class="params">params</span>):</span></span><br><span class="line">    p_list = []</span><br><span class="line">    <span class="keyword">for</span> key, val <span class="keyword">in</span> params.items():</span><br><span class="line">        s_line = <span class="string">&#x27;%s=%s&#x27;</span> % (key, val)</span><br><span class="line">        p_list.append(s_line)</span><br><span class="line">    p_list.sort()</span><br><span class="line">    sb = http_app_secret + <span class="string">&quot;&quot;</span>.join(p_list)</span><br><span class="line">    logger.info(sb)</span><br><span class="line">    instance = str_encrypt(sb.encode())</span><br><span class="line">    logger.info(instance)</span><br><span class="line"></span><br><span class="line">    bs = http_app_id + <span class="string">&quot;:&quot;</span> + instance</span><br><span class="line">    logger.info(bs)</span><br><span class="line"></span><br><span class="line">    encoder = base64.b64encode(bs.encode(<span class="string">&quot;utf-8&quot;</span>))</span><br><span class="line">    logger.info(encoder)</span><br><span class="line">    <span class="keyword">return</span> encoder</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">url = <span class="string">&#x27;https://app.api.ke.com/house/ershoufang/detailpart1v2&#x27;</span></span><br><span class="line"></span><br><span class="line">headers = &#123;</span><br><span class="line">    <span class="string">&#x27;Host&#x27;</span>: <span class="string">&#x27;app.api.ke.com&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;Authorization&#x27;</span>: get_authorization(params),</span><br><span class="line">    <span class="comment"># &#x27;x-req-id&#x27;: &#x27;c33e78e2-94d8-4c87-b09e-6cd22f3973c1&#x27;,</span></span><br><span class="line">    <span class="string">&#x27;Page-Schema&#x27;</span>: <span class="string">&#x27;ershou%2Fdetail&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;Referer&#x27;</span>: <span class="string">&#x27;community%2Fershoulist&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;Cookie&#x27;</span>: <span class="string">&#x27;lianjia_udid=fd6275273712c97c;lianjia_ssid=db0ad3c2-da83-4806-a726-b87c3a7be016;algo_session_id=0c935a9e-5ad2-40c3-b383-08ceff3e929c;lianjia_uuid=4f514342-8349-4596-a4df-ad6540d45db8&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;Dynamic-SDK-VERSION&#x27;</span>: <span class="string">&#x27;1.1.0&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;Lianjia-City-Id&#x27;</span>: <span class="string">&#x27;110000&#x27;</span>,</span><br><span class="line">    <span class="comment"># &#x27;parentSceneId&#x27;: &#x27;5640895386532073216&#x27;,</span></span><br><span class="line">    <span class="string">&#x27;source-global&#x27;</span>: <span class="string">&#x27;&#123;&#125;&#x27;</span>,</span><br><span class="line">    <span class="string">&#x27;User-Agent&#x27;</span>: <span class="string">&#x27;Beike2.58.0;google Pixel+3; Android 9&#x27;</span>,</span><br><span class="line">    <span class="comment"># &#x27;Lianjia-Channel&#x27;: &#x27;Android_ke_tencentd&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;Lianjia-Device-Id&#x27;: &#x27;fd6275273712c97c&#x27;,</span></span><br><span class="line">    <span class="string">&#x27;Lianjia-Version&#x27;</span>: <span class="string">&#x27;2.58.0&#x27;</span>,</span><br><span class="line">    <span class="comment"># &#x27;Lianjia-Im-Version&#x27;: &#x27;2.34.0&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;Lianjia-Recommend-Allowable&#x27;: &#x27;1&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;Authorization&#x27;:&#x27;MjAxODAxMTFfYW5kcm9pZDo5ODkxZjQxYTA2YjVmZWRmMjU4NzI5NTMxZDUzNDZiZDkxM2NjZDEz&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;extension&#x27;: &#x27;lj_duid=null&amp;ketoken=TxocRRR8gdDCVkmPzjVOxyC1kVuGFdhcKiYL7BO9nXwObhtCPKKsYdYziLCFcFDw0XluhtsgqwRrzuB5clwZTWE5REOJERbG1rQQJ8aA8AiZK1wHLb3SIBzz6OAz2zIw&amp;lj_android_id=fd6275273712c97c&amp;lj_device_id_android=fd6275273712c97c&amp;mac_id=F0:5C:77:E7:91:6B&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;ip&#x27;: &#x27;182.140.153.28&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;wifi_name&#x27;: &#x27;Tencent-WiFi&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;lat&#x27;: &#x27;30.552499&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;lng&#x27;: &#x27;104.068037&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;beikeBaseData&#x27;: &#x27;%7B%22duid%22%3A%22%22%7D&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;WLL-KGSA&#x27;:&#x27;LJAPPVA accessKeyId=sjoe98HI099dhdD7; nonce=PiLT6U8QIR8JAZtPbmtRDHbiUF1BEmzc; timestamp=1625123574; signature=q3pLpmpHmDiWCcOArtYFrWULD2ues5EB2bTOHhEl6/U=&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;Host&#x27;:&#x27;app.api.ke.com&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;Connection&#x27;:&#x27;Keep-Alive&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;Accept-Encoding&#x27;:&#x27;gzip&#x27;,</span></span><br><span class="line">    <span class="comment"># &#x27;If-Modified-Since&#x27;: &#x27;Wed, 30 Jun 2021 13:17:18 GMT&#x27;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">r = requests.get(url, params=params, headers=headers)</span><br><span class="line">logger.info(r.text)</span><br></pre></td></tr></table></figure>
+<h1 id="完成">完成<a title="#完成" href="#完成"></a></h1>
+<h1 id="声明">声明<a title="#声明" href="#声明"></a></h1>
+<ul>
+<li>本博客以技术交流为主，提供的内容可操作性不得用于任何商业用途和违法违规场景。</li>
+<li>本人对任何原因在使用教程中提供的策略以及技术分享可能对用户自己或他人造成的任何形式的损失和伤害不承担责任。</li>
+<li>如有侵权，请联系我进行删除。</li>
+</ul>
+]]></content>
+      <categories>
+        <category>技术分享</category>
+        <category>逆向技术</category>
+      </categories>
+      <tags>
+        <tag>贝壳加密算法</tag>
+        <tag>逆向爬虫</tag>
+        <tag>贝壳</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>Mac ADB 使用指南</title>
+    <url>/20210714macadb.html</url>
+    <content><![CDATA[<h2 id="adb概述"><strong>ADB概述</strong><a title="#adb概述" href="#adb概述"></a></h2>
+<p>Android Debug Bridge，Android调试桥接器，简称ADB，是用于管理模拟器或真机状态的万能工具，通俗一点讲adb就是pc和移动设备通信的桥梁，它采用了c/s模型，包括三个部分：</p>
+<p>1、客户端部分，运行在开发用的电脑上，可以在命令行中运行adb命令来调用该客户端，像ADB插件和DDMS这样的Android工具也可以调用adb客户端，需要说明的是客户端与手机或者模拟器是一对多的关系，也就是说不管连接多少设备客户端就只有唯一的一个实例存在。</p>
+<p>2、服务端部分，是运行在开发用电脑上的后台进程，用于管理客户端与运行在模拟器或真机的守护进程通信。</p>
+<p>3、守护进程部分，运行于模拟器或手机的后台（简称adb daemon）。</p>
+<span id="more"></span>
+<h1 id="安装">安装<a title="#安装" href="#安装"></a></h1>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">brew install --cask android-platform-tools</span><br><span class="line"></span><br><span class="line"># 测试使用</span><br><span class="line">adb devices </span><br></pre></td></tr></table></figure>
+<p><img src="http://blog.feilang235.com/(null)-20210714143703339.(null)" alt="img" loading="lazy" class="φbp"></p>
+<h1 id="连接手机">连接手机<a title="#连接手机" href="#连接手机"></a></h1>
+<p><img src="http://blog.feilang235.com/(null)-20210714143719467.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>连接成功输出结果</p>
+<p><img src="http://blog.feilang235.com/(null)" alt="img" loading="lazy" class="φbp"></p>
+<h2 id="常用命令">常用命令<a title="#常用命令" href="#常用命令"></a></h2>
+<p>切换 root 账户</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">su root</span><br></pre></td></tr></table></figure>
+<p>按照apk</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">adb install xxx.apk</span><br></pre></td></tr></table></figure>
+<p>push 文件</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">adb push file.txt /data/local/tmp</span><br></pre></td></tr></table></figure>
+<p>pull文件</p>
+<figure class="highlight plaintext"><table><tr><td class="code"><pre><span class="line">adb pull /data/local/tmp/xxx ./</span><br></pre></td></tr></table></figure>
+]]></content>
+      <categories>
+        <category>工具使用</category>
+      </categories>
+      <tags>
+        <tag>Mac</tag>
+        <tag>adb</tag>
+        <tag>工具使用</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>逆向美团APP探索mtgsig加密算法</title>
+    <url>/20210720meituan.html</url>
+    <content><![CDATA[<p>简单逆向并且分析了美团app 的加密字段。使用hook 的方式进行调用。</p>
+<p>下面是详细的分析过程。</p>
+<h2 id="分析过程">分析过程<a title="#分析过程" href="#分析过程"></a></h2>
+<p>抓包店铺详情</p>
+<p><a href="http://scapi.waimai.meituan.com/mtapi/v9/poi/food?wm_appversion=11.10.404&amp;utm_medium=android&amp;wm_seq=231&amp;uuid=000000000000062B1FBC7B7904BC3BAE6B73BC9937E2BA162484885268688693&amp;wm_ctype=mtandroid&amp;platform=4&amp;wm_latitude=30546106&amp;wm_actual_longitude=104062093&amp;wm_visitid=d1287073-34b1-4188-9b04-5f0f4889a645&amp;wm_dversion=28_9&amp;wm_mac=02%3A00%3A00%3A00%3A00%3A00&amp;push_token=dpshb7d0b3b5094e580f5b8cb4da2d86cf9catpu&amp;utm_content=990012007480921&amp;app=0&amp;wm_longitude=104062093&amp;utm_campaign=AgroupBgroupC0E0Ghomepage_category38_21112__a1__c-1024&amp;wm_actual_latitude=30546106&amp;ci=30&amp;f=android&amp;waimai_sign=T22ltAgF0RUqghUGkugZVhGQZ7ap8vyHPUbEy3OKfOU682swnAoEPtjCVGNhTYB1RwA1OM72mWRn%0AkE48m4W%2FBzMgri08scvR3oBVn1XV2mt6K%2BqVR7nfPoFUTsDmglDJOemGKF%2FleKUskYllXsrjxKNG%0AMu%2FvFavU2JK47GkuhvE%3D%0A&amp;wm_did=990012007480921&amp;version=11.10.404&amp;req_time=1626684620740&amp;utm_term=1100100404&amp;wm_dtype=Pixel%203&amp;wm_uuid=000000000000062B1FBC7B7904BC3BAE6B73BC9937E2BA162484885268688693&amp;partner=4&amp;utm_source=wandoujia&amp;version_name=11.10.404&amp;msid=9900120074809211626683624711&amp;userid=-1&amp;__reqTraceID=956e1a93-7ea6-4254-925a-a7caa6edd370">http://scapi.waimai.meituan.com/mtapi/v9/poi/food?wm_appversion=11.10.404&amp;utm_medium=android&amp;wm_seq=231&amp;uuid=000000000000062B1FBC7B7904BC3BAE6B73BC9937E2BA162484885268688693&amp;wm_ctype=mtandroid&amp;platform=4&amp;wm_latitude=30546106&amp;wm_actual_longitude=104062093&amp;wm_visitid=d1287073-34b1-4188-9b04-5f0f4889a645&amp;wm_dversion=28_9&amp;wm_mac=02%3A00%3A00%3A00%3A00%3A00&amp;push_token=dpshb7d0b3b5094e580f5b8cb4da2d86cf9catpu&amp;utm_content=990012007480921&amp;app=0&amp;wm_longitude=104062093&amp;utm_campaign=AgroupBgroupC0E0Ghomepage_category38_21112__a1__c-1024&amp;wm_actual_latitude=30546106&amp;ci=30&amp;f=android&amp;waimai_sign=T22ltAgF0RUqghUGkugZVhGQZ7ap8vyHPUbEy3OKfOU682swnAoEPtjCVGNhTYB1RwA1OM72mWRn
+kE48m4W%2FBzMgri08scvR3oBVn1XV2mt6K%2BqVR7nfPoFUTsDmglDJOemGKF%2FleKUskYllXsrjxKNG
+Mu%2FvFavU2JK47GkuhvE%3D
+&amp;wm_did=990012007480921&amp;version=11.10.404&amp;req_time=1626684620740&amp;utm_term=1100100404&amp;wm_dtype=Pixel 3&amp;wm_uuid=000000000000062B1FBC7B7904BC3BAE6B73BC9937E2BA162484885268688693&amp;partner=4&amp;utm_source=wandoujia&amp;version_name=11.10.404&amp;msid=9900120074809211626683624711&amp;userid=-1&amp;__reqTraceID=956e1a93-7ea6-4254-925a-a7caa6edd370</a></p>
+<span id="more"></span>
+<p>搜索 v9/poi/food</p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211038619.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211208263.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>得到 getShopMenu 方法名。</p>
+<p>搜索 getShopMenu</p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211234296.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>定位到 RestMenuResponse 返回文件夹中。找到方法 fromJson。</p>
+<p>com.sankuai.waimai.store.repository.model.RestMenuResponse</p>
+<figure class="highlight java"><table><tr><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">static</span> RestMenuResponse <span class="title">fromJson</span><span class="params">(JSONObject jSONObject)</span> <span class="keyword">throws</span> JSONException </span>&#123;</span><br></pre></td></tr></table></figure>
+<p>使用 frida hook 确认就是为 返回数据赋值处理。</p>
+<p>Hook 代码</p>
+<figure class="highlight javascript"><table><tr><td class="code"><pre><span class="line"><span class="keyword">var</span> hook_js = <span class="function"><span class="keyword">function</span> (<span class="params"></span>) </span>&#123;</span><br><span class="line">    <span class="keyword">var</span> OkHttpClient = Java.use(<span class="string">&quot;okhttp3.OkHttpClient&quot;</span>);</span><br><span class="line">    OkHttpClient.newCall.implementation = <span class="function"><span class="keyword">function</span> (<span class="params">request</span>) </span>&#123;</span><br><span class="line">        <span class="keyword">var</span> result = <span class="built_in">this</span>.newCall(request);</span><br><span class="line">        <span class="built_in">console</span>.log(request.toString());</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line"></span><br><span class="line">    &#125;;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    <span class="keyword">var</span> rest = Java.use(<span class="string">&quot;com.sankuai.waimai.store.repository.model.RestMenuResponse&quot;</span>)</span><br><span class="line">    rest.fromJson.overload(<span class="string">&quot;org.json.JSONObject&quot;</span>).implementation = <span class="function"><span class="keyword">function</span> (<span class="params">a1</span>) </span>&#123;</span><br><span class="line">        <span class="keyword">var</span> result = <span class="built_in">this</span>.fromJson(a1);</span><br><span class="line">        <span class="built_in">console</span>.log(<span class="string">&quot;RestMenuResponse&quot;</span>);</span><br><span class="line">        <span class="built_in">console</span>.log(Java.use(<span class="string">&quot;android.util.Log&quot;</span>).getStackTraceString(Java.use(<span class="string">&quot;java.lang.Exception&quot;</span>).$new()));</span><br><span class="line">        <span class="keyword">return</span> result;</span><br><span class="line">    &#125;;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Java.perform(hook_js);</span><br><span class="line"></span><br><span class="line"><span class="comment">// frida -U -f com.dianping.v1 --no-pause -l hook_cip.js</span></span><br><span class="line"><span class="comment">// frida -U -l hook_cip.js com.sankuai.meituan.takeoutnew</span></span><br><span class="line"><span class="comment">// 使用方法1 attach : frida -U com.sankuai.meituan --no-pause -l hook_cip.js</span></span><br><span class="line"><span class="comment">// 使用方法2 spawn : frida -U -f com.sankuai.meituan -l hook_cip.js --no-pause</span></span><br><span class="line"></span><br><span class="line"><span class="comment">// com.sankuai.meituan</span></span><br><span class="line"><span class="comment">// frida -U -l hook_cip.js com.sankuai.meituan</span></span><br></pre></td></tr></table></figure>
+<h2 id="waimai_sign-签名算法">waimai_sign 签名算法<a title="#waimai_sign-签名算法" href="#waimai_sign-签名算法"></a></h2>
+<p><img src="http://blog.feilang235.com/(null)-20210720211420911.(null)" alt="img" loading="lazy" class="φbp"></p>
+<h1 id="siua-签名字段">Siua 签名字段<a title="#siua-签名字段" href="#siua-签名字段"></a></h1>
+<p>com.meituan.android.common.mtguard.wtscore.plugin.collection.siua.SIUA</p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211442720.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211449139.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>实现方法</p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211502167.(null)" alt="img" loading="lazy" class="φbp"></p>
+<h1 id="mtgsig-加密参数">mtgsig 加密参数<a title="#mtgsig-加密参数" href="#mtgsig-加密参数"></a></h1>
+<p>com.meituan.android.common.mtguard.wtscore.plugin.sign.core.CandyPreprocessor</p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211520495.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211527753.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211534576.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211541115.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>com.meituan.android.common.mtguard.NBridge</p>
+<p><img src="http://blog.feilang235.com/(null)-20210720211554151.(null)" alt="img" loading="lazy" class="φbp"></p>
+<p>到此分析完毕，可以使用 hook的方式进行调用了。</p>
+<h2 id="参考链接">参考链接<a title="#参考链接" href="#参考链接"></a></h2>
+<p>美团app</p>
+<p><a href="https://cloud.tencent.com/developer/article/1819803">https://cloud.tencent.com/developer/article/1819803</a></p>
+<p>美团外卖</p>
+<p><a href="https://blog.csdn.net/someby/article/details/113189788">https://blog.csdn.net/someby/article/details/113189788</a></p>
+]]></content>
+      <tags>
+        <tag>逆向爬虫</tag>
+        <tag>美团</tag>
+        <tag>mtgsig</tag>
+        <tag>美团团购</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>快手 sig 加密算法分析爬虫接口</title>
+    <url>/20210728kuaishou.html</url>
+    <content><![CDATA[<p>快手版本 6.8 以后不能直接使用 charles 抓到包了，需要走 vpn 的模式，其实和大众点评一样。</p>
+<p>IOS 设备推荐 使用 Shadowrocket 备注：只能国外才能下载到。</p>
+<p>android 推荐使用：Drony。</p>
+<p>使用方式可以参考：</p>
+<p><a href="https://link.zhihu.com/?target=https%3A//www.cnblogs.com/lulianqi/p/11380794.html" target="_blank">部分APP无法代理抓包的原因及解决方法（flutter 抓包）</a></p>
+<p>就可以解决大部分抓包问题，美团app 除外。</p>
+<span id="more"></span>
+<h2 id="签名算法破解">签名算法破解<a title="#签名算法破解" href="#签名算法破解"></a></h2>
+<p>这里先给一个大致思路，有序有时间了再详细说下。</p>
+<ul>
+<li>
+<p>第一步计算 sig</p>
+</li>
+<li>
+<ul>
+<li>将所有的请求参数进行排序</li>
+<li>使用=号串联所有的数据。拼接成字符串</li>
+<li>加上一个固定的salt 拼接到字符串后面</li>
+<li>对上面得到的数据进行 md5</li>
+</ul>
+</li>
+<li>
+<p>第二步计算**__NStokensig**</p>
+</li>
+<li>
+<ul>
+<li>这里需要用到一个api_client_salt 字段，每个用户都不一样</li>
+<li>将 sig 和 api_client_salt 字段拼接成一个字符串</li>
+<li>然后使用 SHA256 对字符串加密</li>
+<li>再将上面得到的数据进行移位（这一步比较复杂</li>
+</ul>
+</li>
+</ul>
+<p>最终得到 sig 和 _NStokensig 这两个加密字段。就可以请求到数据了。</p>
+<h2 id="测试结果">测试结果<a title="#测试结果" href="#测试结果"></a></h2>
+<p>快手用户接口</p>
+<p><img src="http://blog.feilang235.com/v2-29e6bfef03eea5d5df943c322aeff0f5_1440w.jpg" alt="img" loading="lazy" class="φbp"></p>
+<p>快手用户视频列表</p>
+<p><img src="http://blog.feilang235.com/v2-622c3ea91942ac5d253372a0dba18612_1440w.jpg" alt="img" loading="lazy" class="φbp"></p>
+<p>快手视频评论</p>
+<p><img src="http://blog.feilang235.com/v2-7c4a4a89de1778bd730ed84c383b4274_1440w.jpg" alt="img" loading="lazy" class="φbp"></p>
+<p>以上就是快手的分析哈。</p>
+]]></content>
+      <tags>
+        <tag>逆向爬虫</tag>
+        <tag>快手</tag>
+        <tag>si g</tag>
+        <tag>快手爬虫</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>小红书爬虫接口api对接</title>
+    <url>/20220304xhsapi.html</url>
+    <content><![CDATA[<h3 id="小红书接口列表">小红书接口列表<a title="#小红书接口列表" href="#小红书接口列表"></a></h3>
+<ul>
+<li>用户信息</li>
+<li>笔记信息</li>
+<li>评论信息</li>
+<li>用户笔记列表</li>
+</ul>
+<span id="more"></span>
+<h2 id="get-用户">GET 用户<a title="#get-用户" href="#get-用户"></a></h2>
+<p>GET /xhs/api/app/user</p>
+<h3 id="请求参数">请求参数<a title="#请求参数" href="#请求参数"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>名称</th>
+<th>位置</th>
+<th>类型</th>
+<th>必选</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>token</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+</tbody>
+</table></div></div><blockquote>
+<p>返回示例</p>
+</blockquote>
+<h3 id="返回结果">返回结果<a title="#返回结果" href="#返回结果"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>状态码</th>
+<th>状态码含义</th>
+<th>说明</th>
+<th>数据模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200</td>
+<td><a href="https://tools.ietf.org/html/rfc7231#section-6.3.1" target="_blank">OK</a></td>
+<td>成功</td>
+<td>Inline</td>
+</tr>
+</tbody>
+</table></div></div><h3 id="返回数据结构">返回数据结构<a title="#返回数据结构" href="#返回数据结构"></a></h3>
+<h2 id="get-笔记">GET 笔记<a title="#get-笔记" href="#get-笔记"></a></h2>
+<p>GET /xhs/api/app/note</p>
+<h3 id="请求参数-1">请求参数<a title="#请求参数-1" href="#请求参数-1"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>名称</th>
+<th>位置</th>
+<th>类型</th>
+<th>必选</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>token</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>note_id</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+</tbody>
+</table></div></div><blockquote>
+<p>返回示例</p>
+</blockquote>
+<h3 id="返回结果-1">返回结果<a title="#返回结果-1" href="#返回结果-1"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>状态码</th>
+<th>状态码含义</th>
+<th>说明</th>
+<th>数据模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200</td>
+<td><a href="https://tools.ietf.org/html/rfc7231#section-6.3.1" target="_blank">OK</a></td>
+<td>成功</td>
+<td>Inline</td>
+</tr>
+</tbody>
+</table></div></div><h3 id="返回数据结构-1">返回数据结构<a title="#返回数据结构-1" href="#返回数据结构-1"></a></h3>
+<h2 id="get-搜索笔记">GET 搜索笔记<a title="#get-搜索笔记" href="#get-搜索笔记"></a></h2>
+<p>GET /xhs/api/app/search/note</p>
+<h3 id="请求参数-2">请求参数<a title="#请求参数-2" href="#请求参数-2"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>名称</th>
+<th>位置</th>
+<th>类型</th>
+<th>必选</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>keyword</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>page</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>type</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>sort</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>token</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+</tbody>
+</table></div></div><blockquote>
+<p>返回示例</p>
+</blockquote>
+<h3 id="返回结果-2">返回结果<a title="#返回结果-2" href="#返回结果-2"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>状态码</th>
+<th>状态码含义</th>
+<th>说明</th>
+<th>数据模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200</td>
+<td><a href="https://tools.ietf.org/html/rfc7231#section-6.3.1" target="_blank">OK</a></td>
+<td>成功</td>
+<td>Inline</td>
+</tr>
+</tbody>
+</table></div></div><h3 id="返回数据结构-2">返回数据结构<a title="#返回数据结构-2" href="#返回数据结构-2"></a></h3>
+<h2 id="get-笔记列表">GET 笔记列表<a title="#get-笔记列表" href="#get-笔记列表"></a></h2>
+<p>GET /xhs/api/app/user/note</p>
+<h3 id="请求参数-3">请求参数<a title="#请求参数-3" href="#请求参数-3"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>名称</th>
+<th>位置</th>
+<th>类型</th>
+<th>必选</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>token</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>user_id</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>page</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+</tbody>
+</table></div></div><blockquote>
+<p>返回示例</p>
+</blockquote>
+<h3 id="返回结果-3">返回结果<a title="#返回结果-3" href="#返回结果-3"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>状态码</th>
+<th>状态码含义</th>
+<th>说明</th>
+<th>数据模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200</td>
+<td><a href="https://tools.ietf.org/html/rfc7231#section-6.3.1" target="_blank">OK</a></td>
+<td>成功</td>
+<td>Inline</td>
+</tr>
+</tbody>
+</table></div></div><h3 id="返回数据结构-3">返回数据结构<a title="#返回数据结构-3" href="#返回数据结构-3"></a></h3>
+<h2 id="get-评论">GET 评论<a title="#get-评论" href="#get-评论"></a></h2>
+<p>GET /xhs/api/app/note/comment</p>
+<h3 id="请求参数-4">请求参数<a title="#请求参数-4" href="#请求参数-4"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>名称</th>
+<th>位置</th>
+<th>类型</th>
+<th>必选</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>token</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+<tr>
+<td>note_id</td>
+<td>query</td>
+<td>string</td>
+<td>false</td>
+<td>none</td>
+</tr>
+</tbody>
+</table></div></div><blockquote>
+<p>返回示例</p>
+</blockquote>
+<h3 id="返回结果-4">返回结果<a title="#返回结果-4" href="#返回结果-4"></a></h3>
+<div class="φbq"><div class="φbs"><table><thead>
+<tr>
+<th>状态码</th>
+<th>状态码含义</th>
+<th>说明</th>
+<th>数据模型</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>200</td>
+<td><a href="https://tools.ietf.org/html/rfc7231#section-6.3.1" target="_blank">OK</a></td>
+<td>成功</td>
+<td>Inline</td>
+</tr>
+</tbody>
+</table></div></div><h3 id="返回数据结构-4">返回数据结构<a title="#返回数据结构-4" href="#返回数据结构-4"></a></h3>
+]]></content>
+      <categories>
+        <category>技术分享</category>
+        <category>逆向技术</category>
+      </categories>
+      <tags>
+        <tag>小红书</tag>
+        <tag>小红书爬虫</tag>
+        <tag>小红书接口</tag>
+        <tag>小红书逆向接口</tag>
+        <tag>小红书爬虫接口</tag>
+      </tags>
+  </entry>
+</search>
